@@ -1,0 +1,398 @@
+---
+title: "SSL-in-infancy-analysis"
+author: "Sandy LaTourrette"
+date: "February 17, 2018"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r}
+```
+Setup and load data
+```{r}
+library(dplyr)
+library(plyr)
+library(lme4)
+library(ggplot2)
+library(eyetrackingR)
+library(scales)
+library(RColorBrewer)
+library(lsr)
+library(binomTools)
+
+
+set.seed(42)
+
+goodsubjects <- read.csv('goodsubjects.csv')
+
+#separate experiments
+e1 <- subset(goodsubjects, Condition == 'FSL' | Condition =='USL')
+e1$Condition <- droplevels(e1$Condition)
+
+
+e2_3 <- subset(goodsubjects, Condition == 'SSL' | Condition =='reversed')
+e2_3$Condition <- droplevels(e2_3$Condition)
+
+```
+Familiarization analyses
+
+```{r}
+#Overall means, SDs
+mean(goodsubjects$FamLooking[which(goodsubjects$Condition == 'FSL')]) / 60
+sd(goodsubjects$FamLooking[which(goodsubjects$Condition == 'FSL')]) / 60
+
+mean(goodsubjects$FamLooking[which(goodsubjects$Condition == 'USL')]) / 60
+sd(goodsubjects$FamLooking[which(goodsubjects$Condition == 'USL')]) / 60
+
+mean(goodsubjects$FamLooking[which(goodsubjects$Condition == 'SSL')]) / 60
+sd(goodsubjects$FamLooking[which(goodsubjects$Condition == 'SSL')]) / 60
+
+mean(goodsubjects$FamLooking[which(goodsubjects$Condition == 'reversed')]) / 60
+sd(goodsubjects$FamLooking[which(goodsubjects$Condition == 'reversed')]) / 60
+
+```
+    Expt 1
+```{r}
+t.test(FamLooking ~ Condition, data = e1, var.equal = TRUE)
+cohensD(FamLooking ~ Condition, data = e1)
+```
+   Expt 2
+```{r}
+e1_vs_e2 <- subset(goodsubjects, Condition != 'reversed')
+e1_vs_e2$Expt <- ifelse(e1_vs_e2$Condition == 'SSL', 'E2', 'E1')
+t.test(FamLooking ~ Expt, data = e1_vs_e2, var.equal = TRUE)
+cohensD(FamLooking ~ Expt, data = e1_vs_e2)
+
+```
+   Expt 3
+```{r}
+e2_vs_e3 <- subset(goodsubjects, Condition == 'SSL' | Condition == 'reversed')
+e2_vs_e3$Expt <- ifelse(e2_vs_e3$Condition == 'SSL', 'E2', 'E3')
+t.test(FamLooking ~ Expt, data = e2_vs_e3, var.equal = TRUE)
+cohensD(FamLooking ~ Expt, data = e2_vs_e3)
+
+```
+Novelty Preference Analyses
+
+```{r}
+```
+ Preliminary analyses
+```{r}
+
+  #Age
+summary(lm(Elog ~ Age, data = e1))
+summary(lm(Elog ~ Age, data = e2_3))
+
+  #TestPosition
+summary(aov(Elog ~ TestPosition, data = e1))
+summary(aov(Elog ~ TestPosition, data = e2_3))
+
+  #Order
+summary(aov(Elog ~ Order, data = e1))
+summary(aov(Elog ~ Order, data = e2_3))
+
+  #Sex
+summary(aov(Elog ~ Sex, data = e1))
+summary(aov(Elog ~ Sex, data = e2_3))
+
+  #Category
+summary(aov(Elog ~ Category, data = e1))
+summary(aov(Elog ~ Category, data = e2_3))
+
+#Similar results are obtained from a complete model, p > .1 in all cases
+model <- lm(Elog ~  1 + Order + TestPosition + Age + Sex, data = e1)
+drop1(model, ~., test='Chi')
+
+model <- lm(Elog ~  1 + Order + TestPosition + Age + Sex, data = e2_3)
+drop1(model, ~., test='Chi')
+
+
+```
+  Experiment 1
+```{r}
+mean(goodsubjects$FinalNovPref[which(goodsubjects$Condition == 'FSL')])
+sd(goodsubjects$FinalNovPref[which(goodsubjects$Condition == 'FSL')])
+
+mean(goodsubjects$FinalNovPref[which(goodsubjects$Condition == 'USL')])
+sd(goodsubjects$FinalNovPref[which(goodsubjects$Condition == 'USL')])
+
+t.test(goodsubjects$Elog[which(goodsubjects$Condition == 'USL')], mu = empLogit(.5))
+cohensD(goodsubjects$Elog[which(goodsubjects$Condition == 'USL')], mu = empLogit(.5))
+
+t.test(goodsubjects$Elog[which(goodsubjects$Condition == 'FSL')], mu = empLogit(.5))
+cohensD(goodsubjects$Elog[which(goodsubjects$Condition == 'FSL')], mu = empLogit(.5))
+
+t.test(goodsubjects$Elog[which(goodsubjects$Condition == 'USL')], goodsubjects$Elog[which(goodsubjects$Condition == 'FSL')], var.equal = T)
+e1$Condition <- droplevels(e1$Condition)
+cohensD(e1$Elog ~ as.factor(e1$Condition))
+
+```
+   Experiment 2
+```{r}
+mean(goodsubjects$FinalNovPref[which(goodsubjects$Condition == 'SSL')])
+sd(goodsubjects$FinalNovPref[which(goodsubjects$Condition == 'SSL')])
+
+t.test(goodsubjects$Elog[which(goodsubjects$Condition == 'SSL')], mu = empLogit(.5))
+cohensD(goodsubjects$Elog[which(goodsubjects$Condition == 'SSL')], mu = empLogit(.5))
+
+
+t.test(goodsubjects$Elog[which(goodsubjects$Condition == 'USL')], goodsubjects$Elog[which(goodsubjects$Condition == 'SSL')], var.equal = T)
+cohensD(goodsubjects$Elog[which(goodsubjects$Condition == 'USL')], goodsubjects$Elog[which(goodsubjects$Condition == 'SSL')])
+
+t.test(goodsubjects$Elog[which(goodsubjects$Condition == 'FSL')], goodsubjects$Elog[which(goodsubjects$Condition == 'SSL')], var.equal = T)
+cohensD(goodsubjects$Elog[which(goodsubjects$Condition == 'FSL')], goodsubjects$Elog[which(goodsubjects$Condition == 'SSL')])
+
+```
+   Experiment 3
+```{r}
+mean(goodsubjects$FinalNovPref[which(goodsubjects$Condition == 'reversed')])
+sd(goodsubjects$FinalNovPref[which(goodsubjects$Condition == 'reversed')])
+
+t.test(goodsubjects$Elog[which(goodsubjects$Condition == 'reversed')], mu = empLogit(.5))
+cohensD(goodsubjects$Elog[which(goodsubjects$Condition == 'reversed')], mu = empLogit(.5))
+
+t.test(goodsubjects$Elog[which(goodsubjects$Condition == 'reversed')], goodsubjects$Elog[which(goodsubjects$Condition == 'SSL')], var.equal = T)
+cohensD(goodsubjects$Elog[which(goodsubjects$Condition == 'reversed')], goodsubjects$Elog[which(goodsubjects$Condition == 'SSL')])
+
+t.test(goodsubjects$Elog[which(goodsubjects$Condition == 'reversed')], goodsubjects$Elog[which(goodsubjects$Condition == 'FSL')], var.equal = T)
+cohensD(goodsubjects$Elog[which(goodsubjects$Condition == 'reversed')], goodsubjects$Elog[which(goodsubjects$Condition == 'FSL')])
+
+t.test(goodsubjects$Elog[which(goodsubjects$Condition == 'reversed')], goodsubjects$Elog[which(goodsubjects$Condition == 'USL')], var.equal = T)
+cohensD(goodsubjects$Elog[which(goodsubjects$Condition == 'reversed')], goodsubjects$Elog[which(goodsubjects$Condition == 'USL')])
+
+```
+  Graph the results
+```{r}
+#Make an overall bar graph of means
+means.sem <- ddply(goodsubjects, "Condition", summarise,
+                   mean=mean(FinalNovPref), sem=sd(FinalNovPref)/sqrt(length(FinalNovPref)))
+means.sem <- transform(means.sem, lower=mean-sem, upper=mean+sem)
+
+positions <- c("FSL", "USL", "", "SSL", "", "reversed")
+
+#Error bars represent standard error of the mean
+
+barmeans <- ggplot(means.sem, aes(x=Condition, y=mean, fill=Condition)) + 
+  geom_bar(width = .8, position=position_dodge(width=2), stat="identity") +
+  geom_errorbar(aes(ymin=lower, ymax=upper),
+                width=.2,                    # Width of the error bars
+                position=position_dodge(.9))+
+  coord_cartesian(ylim=c(.25,.75)) + theme_bw(base_size = 18) +
+
+  #eliminates background, gridlines, and chart border
+  theme(
+    plot.background = element_blank()
+   ,panel.grid.major = element_blank()
+   ,panel.grid.minor = element_blank()
+   ,panel.border = element_blank()
+  ) +
+scale_x_discrete(limits = c("FSL", "USL", "SSL", "reversed"), labels = c("Fully Supervised,\n n = 24","Unsupervised,\n n = 24", "Semi-supervised,\n n = 24", "Reversed SSL, \n n = 24")) + 
+
+ylab('Overall Novelty Preference (%)') +
+
+scale_y_continuous(labels = percent)+
+     theme(legend.position="none")
+
+g <- ggplot_build(barmeans)
+colors <- unique(g$data[[1]]["fill"])
+colors[4,1] <- '#eaa207'
+
+
+barmeans +  scale_fill_manual(values=c(colors[2,1],colors[4,1],colors[3,1], colors[1,1]))
+
+dev.copy(png,'means.png')
+dev.off()
+
+
+```
+Cluster-based permutations analyses
+
+```{r}
+```
+ Generate time-course data
+```{r}
+master_TEST <- read.csv('master-TEST.csv')
+data <- make_eyetrackingr_data(master_TEST, 
+                               participant_column = "ParticipantName",
+                               trial_column = "TrialNumber",
+                               time_column = "TimeFromPhaseOnset",
+                               trackloss_column = "TrackLoss",
+                               aoi_columns = c('Fam','Nov'),
+                               treat_non_aoi_looks_as_missing = TRUE)
+data$Condition <- data$Condition..NoFSL.vs..FSL.
+data$Condition <- factor(data$Condition)
+levels(data$Condition) <- c('USL', 'reversed', 'SSL', 'FSL')
+
+data <- subset(data, TrackLoss == FALSE)
+
+#Look at only first 5 seconds, plus exclude first 200ms, when no shift in looking can occur
+data <- subset(data, TimeFromPhaseOnset >= 200 & TimeFromPhaseOnset <= 5000)
+
+ #Make time-binned data set; see Waxman, Fu, et al. (2016) for an identical approach
+response_time <- make_time_sequence_data(data,
+                                         time_bin_size = 25, 
+                                         predictor_columns = c("Condition", "TrialNumber"),
+                                         aois = "Nov",
+                                         summarize_by = "ParticipantName"
+)
+```
+ Plot data
+```{r}
+response_time$Expt <- ifelse(response_time$Condition == 'FSL' | response_time$Condition == 'USL', "Experiment 1", "Experiments 2 & 3")
+
+plot(response_time, predictor_column = "Condition") + 
+  theme_light() +
+ylab('Overall Novelty Preference (%)') +
+  xlab('Time after Trial Onset (ms)') +
+  scale_y_continuous(labels = percent) +
+ scale_color_manual(values=c(colors[2,1],colors[4,1],colors[3,1], colors[1,1]), 
+                        name="Condition",
+                         breaks=c("FSL", "USL", "SSL", "reversed"),
+                         labels=c("Fully Supervised", "Unsupervised", "Semi-supervised", "Reversed Control"))+
+ #scale_fill_discrete(name="Condition",
+#                        breaks=c("FSL", "USL", "SSL"),
+#                         labels=c("FSL", "USL", "SSL"))
+ scale_fill_manual(values=c(colors[2,1], colors[4,1],colors[3,1], colors[1,1]), 
+                       name="Condition",
+                         breaks=c("FSL", "USL", "SSL", "reversed"),
+                         labels=c("Fully Supervised", "Unsupervised", "Semi-supervised", "Reversed Control")) +
+                         facet_grid(~Expt) +
+    annotate("rect", xmin = 3450, xmax = 3850, ymin = 0, ymax = 1,
+             alpha = .2)
+             
+dev.copy(png, "faceted_timecourse.png")
+dev.off()
+
+```
+Experiment 1 Analysis
+```{r}
+response_timeE1 <- subset(response_time, Condition == 'FSL' | Condition == 'USL')
+
+
+num_sub = length(unique((response_timeE1$ParticipantName)))
+threshold_t = qt(p = 1 - .05/2, 
+                 df = num_sub-1) # pick threshold t based on alpha = .05 two tailed
+df_timeclust <- make_time_cluster_data(response_timeE1, 
+                                       test= "t.test", paired=FALSE,
+                                       predictor_column = "Condition", 
+                                       threshold = threshold_t) 
+plot(df_timeclust) +  ylab("T-Statistic FSL vs. USL") + theme_light()
+summary(df_timeclust)
+
+clust_analysis <- analyze_time_clusters(df_timeclust, within_subj=FALSE, paired=FALSE,
+                                        samples=1000) # in practice, you should use a lot more than 150
+plot(clust_analysis) + theme_light()
+
+summary(clust_analysis)
+
+
+```
+Experiment 2 Analysis
+```{r}
+
+#Comparing SSL and USL conditions
+response_timeSU <- subset(response_time, Condition == 'SSL' | Condition == 'USL')
+
+
+num_sub = length(unique((response_timeSU$ParticipantName)))
+threshold_t = qt(p = 1 - .05/2, 
+                 df = num_sub-1) # pick threshold t based on alpha = .05 two tailed
+df_timeclust <- make_time_cluster_data(response_timeSU, 
+                                       test= "t.test", paired=FALSE,
+                                       predictor_column = "Condition", 
+                                       threshold = threshold_t) 
+plot(df_timeclust) +  ylab("T-Statistic SSL vs. USL") + theme_light()
+summary(df_timeclust)
+
+clust_analysis <- analyze_time_clusters(df_timeclust, within_subj=FALSE, paired=FALSE,
+                                        samples=1000) # in practice, you should use a lot more than 150
+plot(clust_analysis) + theme_light()
+
+summary(clust_analysis)
+
+
+
+#Comparing SSL and FSL conditions
+response_timeSF <- subset(response_time, Condition == 'SSL' | Condition == 'FSL')
+
+
+num_sub = length(unique((response_timeSF$ParticipantName)))
+threshold_t = qt(p = 1 - .05/2, 
+                 df = num_sub-1) # pick threshold t based on alpha = .05 two tailed
+df_timeclust <- make_time_cluster_data(response_timeSF, 
+                                       test= "t.test", paired=FALSE,
+                                       predictor_column = "Condition", 
+                                       threshold = threshold_t) 
+plot(df_timeclust) +  ylab("T-Statistic SSL vs. FSL") + theme_light()
+summary(df_timeclust)
+
+#no clusters emerge: there is no single time point in which we see a difference between FSL and SSL conditions
+
+
+```
+Experiment 3 Analysis
+```{r}
+
+#Primary analysis: SSL vs Reversed
+response_timeSR <- subset(response_time, Condition == 'SSL' | Condition == 'reversed')
+
+
+num_sub = length(unique((response_timeSR$ParticipantName)))
+threshold_t = qt(p = 1 - .05/2, 
+                 df = num_sub-1) # pick threshold t based on alpha = .05 two tailed
+df_timeclust <- make_time_cluster_data(response_timeSR, 
+                                       test= "t.test", paired=FALSE,
+                                       predictor_column = "Condition", 
+                                       threshold = threshold_t) 
+plot(df_timeclust) +  ylab("T-Statistic SSL vs. Reversed") + theme_light()
+summary(df_timeclust)
+
+clust_analysis <- analyze_time_clusters(df_timeclust, within_subj=FALSE, paired=FALSE,
+                                        samples=1000) # in practice, you should use a lot more than 150
+plot(clust_analysis) + theme_light()
+
+summary(clust_analysis)
+
+#Secondary analyses: FSL vs Reversed
+response_timeFR <- subset(response_time, Condition == 'FSL' | Condition == 'reversed')
+
+
+num_sub = length(unique((response_timeFR$ParticipantName)))
+threshold_t = qt(p = 1 - .05/2, 
+                 df = num_sub-1) # pick threshold t based on alpha = .05 two tailed
+
+df_timeclust <- make_time_cluster_data(response_timeFR, 
+                                       test= "t.test", paired=FALSE,
+                                       predictor_column = "Condition", 
+                                       threshold = threshold_t) 
+plot(df_timeclust) +  ylab("T-Statistic FSL vs. Reversed") + theme_light()
+summary(df_timeclust)
+
+clust_analysis <- analyze_time_clusters(df_timeclust, within_subj=FALSE, paired=FALSE,
+                                        samples=1000) # in practice, you should use a lot more than 150
+plot(clust_analysis) + theme_light()
+
+summary(clust_analysis)
+
+#Secondary analysis: USL vs. Reversed
+response_timeUR <- subset(response_time, Condition == 'USL' | Condition == 'reversed')
+
+
+num_sub = length(unique((response_timeUR$ParticipantName)))
+threshold_t = qt(p = 1 - .05/2, 
+                 df = num_sub-1) # pick threshold t based on alpha = .05 two tailed
+
+df_timeclust <- make_time_cluster_data(response_timeUR, 
+                                       test= "t.test", paired=FALSE,
+                                       predictor_column = "Condition", 
+                                       threshold = threshold_t) 
+plot(df_timeclust) +  ylab("T-Statistic USL vs. Reversed") + theme_light()
+summary(df_timeclust)
+
+clust_analysis <- analyze_time_clusters(df_timeclust, within_subj=FALSE, paired=FALSE,
+                                        samples=1000) # in practice, you should use a lot more than 150
+plot(clust_analysis) + theme_light()
+
+summary(clust_analysis)
+```
